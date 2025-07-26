@@ -1,0 +1,33 @@
+{
+  "name": "github-search-mcp",
+  "version": "1.0.0",
+  "description": "MCP server for searching keywords across all branches in GitHub repositories",
+  "main": "src/server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "build": "echo 'No build step required'",
+    "test": "echo 'No tests specified'",
+    "setup": "powershell -ExecutionPolicy Bypass -File setup-bundle.ps1",
+    "setup:quick": "powershell -ExecutionPolicy Bypass -File quick-start.ps1",
+    "setup:unix": "chmod +x run.sh && ./run.sh"
+  },
+  "keywords": ["mcp", "github", "search", "model-context-protocol"],
+  "author": "GitHub Search MCP",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^0.4.0",
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "axios": "^1.6.0",
+    "node-fetch": "^3.3.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+} 

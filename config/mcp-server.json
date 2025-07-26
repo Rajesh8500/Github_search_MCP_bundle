@@ -1,0 +1,24 @@
+{
+  "mcpServers": {
+    "github-search": {
+      "command": "node",
+      "args": ["src/server.js"],
+      "env": {
+        "GITHUB_TOKEN": "${GITHUB_TOKEN}"
+      },
+      "description": "GitHub Search MCP - Search keywords across all branches in GitHub repositories",
+      "version": "1.0.0",
+      "capabilities": {
+        "tools": [
+          "search_github_repo",
+          "list_repo_branches"
+        ]
+      },
+      "settings": {
+        "maxResults": 50,
+        "rateLimitDelay": 1000,
+        "searchTimeout": 30000
+      }
+    }
+  }
+} 
