@@ -33,7 +33,9 @@ export class GitHubSearcher {
   /**
    * Make a request to GitHub API with error handling and rate limiting
    */
-  async makeRequest(url, params = {}) {
+  async makeRequest(url, params = {}, progressCallback = null) {
+    const progress = progressCallback || ((type, message) => console.log(message));
+    
     try {
       const response = await axios.get(url, {
         headers: this.getHeaders(),
@@ -41,10 +43,33 @@ export class GitHubSearcher {
         timeout: 30000
       });
 
-      // Check rate limit
-      const remaining = parseInt(response.headers['x-ratelimit-remaining']);
+      // Enhanced rate limit information
+      const remaining = parseInt(response.headers['x-ratelimit-remaining']) || 0;
+      const limit = parseInt(response.headers['x-ratelimit-limit']) || 60;
+      const resetTime = parseInt(response.headers['x-ratelimit-reset']) || 0;
+      const resetDate = new Date(resetTime * 1000);
+      
+      // Log detailed rate limit info
+      progress('info', `📊 API Rate Limit: ${remaining}/${limit} remaining (resets at ${resetDate.toLocaleTimeString()})`, {
+        rateLimitRemaining: remaining,
+        rateLimitTotal: limit,
+        rateLimitReset: resetDate.toISOString(),
+        endpoint: url.replace(this.apiBase, '')
+      });
+      
       if (remaining < 10) {
-        console.warn('⚠️  GitHub API rate limit is low. Consider waiting or adding a GitHub token.');
+        progress('warning', `⚠️  GitHub API rate limit is critically low! Only ${remaining}/${limit} requests remaining. Resets at ${resetDate.toLocaleTimeString()}`, {
+          rateLimitRemaining: remaining,
+          rateLimitTotal: limit,
+          rateLimitReset: resetDate.toISOString(),
+          critical: true
+        });
+      } else if (remaining < 50) {
+        progress('warning', `⚠️  GitHub API rate limit getting low: ${remaining}/${limit} requests remaining`, {
+          rateLimitRemaining: remaining,
+          rateLimitTotal: limit,
+          rateLimitReset: resetDate.toISOString()
+        });
       }
 
       return response.data;
@@ -52,22 +77,73 @@ export class GitHubSearcher {
       if (error.response) {
         const status = error.response.status;
         const message = error.response.data?.message || error.message;
+        const headers = error.response.headers;
+        
+        // Enhanced error information for rate limits
+        const remaining = parseInt(headers['x-ratelimit-remaining']) || 0;
+        const limit = parseInt(headers['x-ratelimit-limit']) || 60;
+        const resetTime = parseInt(headers['x-ratelimit-reset']) || 0;
+        const resetDate = new Date(resetTime * 1000);
         
         switch (status) {
           case 401:
-            throw new Error('GitHub API authentication failed. Check your GITHUB_TOKEN.');
+            const authError = 'GitHub API authentication failed. Check your GITHUB_TOKEN.';
+            progress('error', `🔐 ${authError}`, {
+              errorType: 'authentication',
+              status: 401,
+              message: authError,
+              suggestion: 'Verify your GitHub Personal Access Token is valid and has the necessary permissions.'
+            });
+            throw new Error(authError);
           case 403:
             if (message.includes('rate limit')) {
-              throw new Error('GitHub API rate limit exceeded. Please wait or add a GitHub token.');
+              const rateLimitError = `GitHub API rate limit exceeded. ${remaining}/${limit} requests remaining. Resets at ${resetDate.toLocaleTimeString()}.`;
+              progress('error', `🚫 ${rateLimitError}`, {
+                errorType: 'rate_limit',
+                status: 403,
+                rateLimitRemaining: remaining,
+                rateLimitTotal: limit,
+                rateLimitReset: resetDate.toISOString(),
+                message: rateLimitError,
+                suggestion: 'Wait for rate limit to reset or upgrade your GitHub API plan.'
+              });
+              throw new Error(rateLimitError);
             }
-            throw new Error(`GitHub API access forbidden: ${message}`);
+            const forbiddenError = `GitHub API access forbidden: ${message}`;
+            progress('error', `🚫 ${forbiddenError}`, {
+              errorType: 'forbidden',
+              status: 403,
+              message: forbiddenError,
+              suggestion: 'Check repository permissions and token scopes.'
+            });
+            throw new Error(forbiddenError);
           case 404:
-            throw new Error('Repository not found or not accessible.');
+            const notFoundError = 'Repository not found or not accessible.';
+            progress('error', `❓ ${notFoundError}`, {
+              errorType: 'not_found',
+              status: 404,
+              message: notFoundError,
+              suggestion: 'Verify the repository name and ensure it is public or you have access.'
+            });
+            throw new Error(notFoundError);
           default:
-            throw new Error(`GitHub API error (${status}): ${message}`);
+            const apiError = `GitHub API error (${status}): ${message}`;
+            progress('error', `⚠️ ${apiError}`, {
+              errorType: 'api_error',
+              status: status,
+              message: apiError,
+              originalMessage: message
+            });
+            throw new Error(apiError);
         }
       }
-      throw new Error(`Network error: ${error.message}`);
+      const networkError = `Network error: ${error.message}`;
+      progress('error', `🌐 ${networkError}`, {
+        errorType: 'network',
+        message: networkError,
+        originalError: error.message
+      });
+      throw new Error(networkError);
     }
   }
 
@@ -99,26 +175,36 @@ export class GitHubSearcher {
       searchInFiles = true,
       searchInFilenames = true,
       fileExtensions = [],
-      maxResults = 50
+      maxResults = 50,
+      progressCallback = null
     } = options;
 
-    console.log(`🔍 Searching for "${keyword}" in ${repository} across all branches...`);
+    const progress = progressCallback || ((type, message) => console.log(message));
+
+    progress('info', `🔍 Searching for "${keyword}" in ${repository} across all branches...`);
 
     // Get all branches first
     const branches = await this.listBranches(repository);
-    console.log(`📋 Found ${branches.length} branches to search`);
+    progress('info', `📋 Found ${branches.length} branches to search`, { branchCount: branches.length });
 
     const allResults = [];
     let searchCount = 0;
 
-    for (const branch of branches) {
+    for (const [index, branch] of branches.entries()) {
       if (searchCount >= maxResults) break;
 
-      console.log(`🌿 Searching branch: ${branch.name}`);
+      progress('branch', `🌿 Searching branch ${index + 1}/${branches.length}: ${branch.name} ${branch.isDefault ? '(default)' : ''}`, { 
+        branchName: branch.name,
+        branchIndex: index + 1,
+        totalBranches: branches.length,
+        isDefault: branch.isDefault,
+        lastCommit: branch.lastCommit?.sha?.substring(0, 7)
+      });
       
       try {
         // Add delay to respect rate limits
         if (searchCount > 0) {
+          progress('info', `⏱️  Waiting ${this.rateLimitDelay}ms to respect rate limits...`);
           await this.delay(this.rateLimitDelay);
         }
 
@@ -129,19 +215,59 @@ export class GitHubSearcher {
           searchInFiles,
           searchInFilenames,
           fileExtensions,
-          maxResults: maxResults - searchCount
+          maxResults: maxResults - searchCount,
+          progressCallback
         });
 
-        allResults.push(...branchResults);
+        // Process and enhance results with detailed information
+        const enhancedResults = branchResults.map(result => ({
+          ...result,
+          repository,
+          branchInfo: {
+            name: branch.name,
+            isDefault: branch.isDefault,
+            lastCommit: branch.lastCommit
+          }
+        }));
+
+        allResults.push(...enhancedResults);
         searchCount += branchResults.length;
 
+        if (branchResults.length > 0) {
+          progress('results', `   ✅ Found ${branchResults.length} matches in branch "${branch.name}"`, {
+            branchName: branch.name,
+            resultsCount: branchResults.length,
+            results: enhancedResults.slice(0, 3).map(r => ({
+              file: r.filePath,
+              line: r.lineNumber,
+              url: r.url
+            }))
+          });
+          
+          // Send individual results for real-time display
+          for (const result of enhancedResults) {
+            progress('match', `   📄 ${result.filePath}${result.lineNumber ? `:${result.lineNumber}` : ''} in ${branch.name}`, {
+              result,
+              branchName: branch.name
+            });
+          }
+        } else {
+          progress('info', `   ❌ No matches found in branch "${branch.name}"`);
+        }
+
       } catch (error) {
-        console.warn(`⚠️  Error searching branch ${branch.name}: ${error.message}`);
+        progress('error', `⚠️  Error searching branch ${branch.name}: ${error.message}`, {
+          branchName: branch.name,
+          error: error.message,
+          errorType: 'branch_search_error'
+        });
         continue;
       }
     }
 
-    console.log(`✅ Search completed. Found ${allResults.length} total results.`);
+    progress('complete', `✅ Search completed. Found ${allResults.length} total results.`, {
+      totalResults: allResults.length
+    });
     return allResults.slice(0, maxResults);
   }
 
@@ -156,9 +282,11 @@ export class GitHubSearcher {
       searchInFiles,
       searchInFilenames,
       fileExtensions,
-      maxResults
+      maxResults,
+      progressCallback = null
     } = options;
 
+    const progress = progressCallback || ((type, message) => console.log(message));
     const results = [];
     
     try {
@@ -169,7 +297,8 @@ export class GitHubSearcher {
           repository,
           branch,
           fileExtensions,
-          maxResults: Math.floor(maxResults / 2)
+          maxResults: Math.floor(maxResults / 2),
+          progressCallback
         });
         results.push(...fileResults);
       }
@@ -181,13 +310,17 @@ export class GitHubSearcher {
           repository,
           branch,
           fileExtensions,
-          maxResults: Math.floor(maxResults / 2)
+          maxResults: Math.floor(maxResults / 2),
+          progressCallback
         });
         results.push(...nameResults);
       }
 
     } catch (error) {
-      console.warn(`Error searching in branch ${branch}: ${error.message}`);
+      progress('warning', `Error searching in branch ${branch}: ${error.message}`, {
+        branchName: branch,
+        error: error.message
+      });
     }
 
     return results;
@@ -197,7 +330,8 @@ export class GitHubSearcher {
    * Search in file contents using GitHub's code search API
    */
   async searchFileContents(options) {
-    const { keyword, repository, branch, fileExtensions, maxResults } = options;
+    const { keyword, repository, branch, fileExtensions, maxResults, progressCallback = null } = options;
+    const progress = progressCallback || ((type, message) => console.log(message));
     
     // Build search query
     let query = `${keyword} repo:${repository}`;
@@ -212,7 +346,7 @@ export class GitHubSearcher {
       const data = await this.makeRequest(url, {
         q: query,
         per_page: Math.min(maxResults, 100)
-      });
+      }, progressCallback);
 
       const results = [];
       
@@ -237,7 +371,9 @@ export class GitHubSearcher {
 
       return results;
     } catch (error) {
-      console.warn(`Error searching file contents: ${error.message}`);
+      progress('warning', `Error searching file contents: ${error.message}`, {
+        error: error.message
+      });
       return [];
     }
   }
@@ -246,12 +382,13 @@ export class GitHubSearcher {
    * Search in filenames
    */
   async searchFilenames(options) {
-    const { keyword, repository, branch, fileExtensions, maxResults } = options;
+    const { keyword, repository, branch, fileExtensions, maxResults, progressCallback = null } = options;
+    const progress = progressCallback || ((type, message) => console.log(message));
     
     try {
       // Get repository tree for the specific branch
       const url = `${this.apiBase}/repos/${repository}/git/trees/${branch}`;
-      const tree = await this.makeRequest(url, { recursive: 1 });
+      const tree = await this.makeRequest(url, { recursive: 1 }, progressCallback);
       
       const results = [];
       
@@ -286,7 +423,10 @@ export class GitHubSearcher {
       
       return results;
     } catch (error) {
-      console.warn(`Error searching filenames in branch ${branch}: ${error.message}`);
+      progress('warning', `Error searching filenames in branch ${branch}: ${error.message}`, {
+        branchName: branch,
+        error: error.message
+      });
       return [];
     }
   }
@@ -333,6 +473,28 @@ export class GitHubSearcher {
     });
     
     return results;
+  }
+
+  /**
+   * Search for repositories on GitHub
+   */
+  async searchRepositories(keyword, options = {}) {
+    const { maxResults = 20, sort = 'stars' } = options;
+    
+    try {
+      const url = `${this.apiBase}/search/repositories`;
+      const data = await this.makeRequest(url, {
+        q: keyword,
+        sort: sort,
+        order: 'desc',
+        per_page: Math.min(maxResults, 100)
+      });
+
+      return data.items || [];
+    } catch (error) {
+      console.warn(`Error searching repositories: ${error.message}`);
+      return [];
+    }
   }
 
   /**
