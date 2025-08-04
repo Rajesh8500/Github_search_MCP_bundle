@@ -8,32 +8,132 @@
     <link href="./styles.css" rel="stylesheet">
 </head>
 <body>
+    <!-- Animated Background Elements -->
+    <div class="floating-orbs">
+        <div class="orb"></div>
+        <div class="orb"></div>
+        <div class="orb"></div>
+    </div>
+    
+    <!-- Floating Icons Background -->
+    <div class="floating-icons">
+        <div class="floating-icon" data-speed="0.5">
+            <i class="fab fa-github"></i>
+        </div>
+        <div class="floating-icon" data-speed="0.3">
+            <i class="fas fa-code-branch"></i>
+        </div>
+        <div class="floating-icon" data-speed="0.7">
+            <i class="fas fa-code"></i>
+        </div>
+        <div class="floating-icon" data-speed="0.4">
+            <i class="fas fa-search"></i>
+        </div>
+        <div class="floating-icon" data-speed="0.6">
+            <i class="fas fa-terminal"></i>
+        </div>
+        <div class="floating-icon" data-speed="0.2">
+            <i class="fas fa-file-code"></i>
+        </div>
+        <div class="floating-icon" data-speed="0.8">
+            <i class="fas fa-laptop-code"></i>
+        </div>
+        <div class="floating-icon" data-speed="0.5">
+            <i class="fas fa-database"></i>
+        </div>
+    </div>
+
+    <!-- Theme Toggle Button (Outside container for proper positioning) -->
+    <button id="themeToggle" class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">
+        <i class="fas fa-moon" id="themeIcon"></i>
+    </button>
+
     <div class="container">
         <!-- Header -->
         <header class="header">
             <div class="header-content">
-                <h1><i class="fab fa-github"></i> GitHub Search MCP</h1>
-                <p>Search keywords across all branches in GitHub repositories</p>
+                <h1 class="title">
+                    <i class="fab fa-github animated-icon" aria-hidden="true"></i>
+                    <span>GitHub Repository Search</span>
+                </h1>
+                <p class="subtitle">Search across all branches in any repository</p>
             </div>
         </header>
 
-        <!-- Search Form -->
-        <div class="search-section">
-            <form id="searchForm" class="search-form">
-                <div class="form-group">
-                    <label for="keyword">
-                        <i class="fas fa-search"></i> Search Keyword
+        <!-- Search Mode Toggle -->
+        <div class="search-mode-section">
+            <div class="search-mode-toggle">
+                <button type="button" class="mode-btn active" id="repoSearchMode" onclick="switchSearchMode('repo')">
+                    <i class="fas fa-search"></i> Find Repository
+                </button>
+                <button type="button" class="mode-btn" id="directSearchMode" onclick="switchSearchMode('direct')">
+                    <i class="fas fa-code"></i> Direct Search
+                </button>
+            </div>
+        </div>
+
+        <!-- Repository Search Form -->
+        <div class="search-section" id="repoSearchSection">
+            <form id="repoSearchForm" class="search-form">
+                <div class="form-group integrated-search">
+                    <label for="repoKeyword" class="search-label-input">
+                        <i class="fas fa-search"></i>
+                        <span class="label-text">Repository Search</span>
+                        <input type="text" id="repoKeyword" name="repoKeyword" required 
+                               placeholder="" data-typed-placeholder="Search for repositories (e.g., 'react', 'vscode', 'node')..." />
                     </label>
-                    <input type="text" id="keyword" name="keyword" required 
-                           placeholder="Enter keyword to search for..." />
+                </div>
+                <button type="submit" class="search-btn hover-reveal-text">
+                    <i class="fas fa-search"></i>
+                    <span class="btn-text">Find Repos</span>
+                </button>
+            </form>
+            <!-- Floating Clear Button -->
+            <div class="floating-clear-wrapper">
+                <button class="floating-clear-btn" onclick="clearForm()" title="Reset">
+                    <i class="fas fa-sync-alt"></i>
+                    <span class="btn-text">Reset</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Repository Results -->
+        <div id="repoResults" class="repo-results hidden"></div>
+
+        <!-- Code Search Form -->
+        <div class="search-section hidden" id="codeSearchSection">
+            <form id="searchForm" class="search-form">
+                <div class="form-group" id="selectedRepoGroup" style="display: none;">
+                    <label for="selectedRepo">
+                        <i class="fab fa-github"></i> Selected Repository
+                    </label>
+                    <div class="selected-repo-display" id="selectedRepoDisplay">
+                        <div class="repo-info">
+                            <span id="selectedRepoName">No repository selected</span>
+                            <span id="selectedRepoDescription"></span>
+                        </div>
+                        <button type="button" class="change-repo-btn" onclick="switchSearchMode('repo')">
+                            <i class="fas fa-exchange-alt"></i> Change
+                        </button>
+                    </div>
                 </div>
 
-                <div class="form-group">
-                    <label for="repository">
-                        <i class="fab fa-github"></i> Repository
+                <div class="form-group integrated-search">
+                    <label for="keyword" class="search-label-input">
+                        <i class="fas fa-search"></i>
+                        <span class="label-text">Search Keyword</span>
+                        <input type="text" id="keyword" name="keyword" required 
+                               placeholder="" data-typed-placeholder="Enter keyword to search for (e.g., 'function', 'TODO', 'import')..." />
                     </label>
-                    <input type="text" id="repository" name="repository" required 
-                           placeholder="owner/repository (e.g., microsoft/vscode)" />
+                </div>
+
+                <div class="form-group integrated-search" id="directRepoGroup">
+                    <label for="repository" class="search-label-input">
+                        <i class="fab fa-github"></i>
+                        <span class="label-text">Repository</span>
+                        <input type="text" id="repository" name="repository" required 
+                               placeholder="" data-typed-placeholder="owner/repository (e.g., 'microsoft/vscode', 'facebook/react')..." />
+                    </label>
                 </div>
 
                 <div class="form-row">
@@ -71,61 +171,166 @@
                     </label>
                 </div>
 
-                <button type="submit" class="search-btn">
+                <button type="submit" class="search-btn hover-reveal-text">
                     <i class="fas fa-search"></i>
-                    Search Repository
+                    <span class="btn-text">Search</span>
                 </button>
             </form>
+            <!-- Floating Clear Button -->
+            <div class="floating-clear-wrapper">
+                <button class="floating-clear-btn" onclick="clearDirectSearchForm()" title="Reset">
+                    <i class="fas fa-sync-alt"></i>
+                    <span class="btn-text">Reset</span>
+                </button>
+            </div>
         </div>
 
         <!-- Loading Spinner -->
         <div id="loadingSpinner" class="loading-spinner hidden">
             <div class="spinner"></div>
             <p>Searching across all branches...</p>
+            <p class="progress-hint">📊 <strong>PROGRESS LOG</strong> tab will open automatically to show real-time search details!</p>
         </div>
 
-        <!-- Quick Actions -->
-        <div class="quick-actions">
-            <h3><i class="fas fa-bolt"></i> Quick Actions</h3>
-            <div class="action-buttons">
-                <button class="action-btn" onclick="fillExample('react', 'facebook/react')">
-                    <i class="fab fa-react"></i> Search React
-                </button>
-                <button class="action-btn" onclick="fillExample('useState', 'microsoft/vscode')">
-                    <i class="fas fa-code"></i> Search VS Code
-                </button>
-                <button class="action-btn" onclick="fillExample('function', 'nodejs/node')">
-                    <i class="fab fa-node-js"></i> Search Node.js
-                </button>
-                <button class="action-btn" onclick="clearForm()">
-                    <i class="fas fa-eraser"></i> Clear Form
+        <!-- Last Results Section -->
+        <div id="lastResultsSection" class="last-results-section hidden">
+            <div class="last-results-content">
+                <div class="last-results-info">
+                    <i class="fas fa-history"></i>
+                    <div>
+                        <h4 id="lastResultsTitle">Previous Search Results Available</h4>
+                        <p id="lastResultsDescription">Click to view your last search results and progress log</p>
+                    </div>
+                </div>
+                <button id="reopenResultsBtn" class="btn btn-secondary" onclick="reopenLastResults()">
+                    <i class="fas fa-external-link-alt"></i>
+                    View Last Results
                 </button>
             </div>
         </div>
+
+
     </div>
 
     <!-- Results Modal -->
     <div id="resultsModal" class="modal hidden">
-        <div class="modal-content">
+        <div class="modal-content enhanced-modal">
             <div class="modal-header">
                 <h2 id="resultsTitle"><i class="fas fa-search-plus"></i> Search Results</h2>
-                <button class="close-btn" onclick="closeModal()">
-                    <i class="fas fa-times"></i>
-                </button>
+                <div class="modal-header-actions">
+                    <button class="btn btn-sm" onclick="toggleModalSize()" title="Toggle Modal Size">
+                        <i class="fas fa-expand-arrows-alt"></i>
+                    </button>
+                    <button class="close-btn" onclick="closeModal()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
             </div>
             
-            <div class="modal-body">
-                <div id="searchSummary" class="search-summary"></div>
-                <div id="resultsContainer"></div>
+            <div class="modal-body enhanced-body">
+                <!-- Main Content Area -->
+                <div class="modal-main-content full-width">
+                    <div class="modal-tabs">
+                        <button class="tab-btn active" id="resultsTabBtn" onclick="switchTab('results')">
+                            <i class="fas fa-list"></i> Results
+                            <span class="tab-count" id="resultsTabCount">0</span>
+                        </button>
+                        <button class="tab-btn" id="progressTabBtn" onclick="switchTab('progress')">
+                            <i class="fas fa-terminal"></i> Progress Log
+                            <span class="activity-badge" id="progressBadge" style="display: none;">●</span>
+                        </button>
+                    </div>
+                    <div class="tab-content-container">
+                        <div id="resultsTab" class="tab-content active">
+                            <div class="content-scrollable">
+                                <div id="searchSummary" class="search-summary"></div>
+                                <div id="resultsContainer" class="results-container"></div>
+                            </div>
+                        </div>
+                        <div id="progressTab" class="tab-content">
+                            <div class="content-scrollable">
+                                <div class="progress-header">
+                                    <h3><i class="fas fa-terminal"></i> Search Progress</h3>
+                                    <div class="progress-controls">
+                                        <button id="expandAllBtn" class="btn btn-sm" onclick="toggleAllConsoleLogs()">
+                                            <i class="fas fa-expand-arrows-alt"></i> Expand All
+                                        </button>
+                                        <button id="clearProgressBtn" class="btn btn-sm" onclick="clearProgressLog()">
+                                            <i class="fas fa-trash"></i> Clear Log
+                                        </button>
+                                        <button id="autoScrollBtn" class="btn btn-sm active" onclick="toggleAutoScroll()">
+                                            <i class="fas fa-arrow-down"></i> Auto Scroll
+                                        </button>
+                                    </div>
+                                </div>
+                                <div id="progressLog" class="progress-log"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
             
             <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="closeModal()">Close</button>
-                <button class="btn btn-primary" onclick="exportResults()">
-                    <i class="fas fa-download"></i> Export Results
-                </button>
+                <div class="footer-left">
+                    <span id="searchInfo" class="search-info">Ready to search...</span>
+                </div>
+                <div class="footer-right">
+                    <button class="btn btn-sm btn-secondary" onclick="scrollToTop()" title="Scroll to Top">
+                        <i class="fas fa-arrow-up"></i>
+                    </button>
+                    <button class="btn btn-sm btn-secondary" onclick="scrollToBottom()" title="Scroll to Bottom">
+                        <i class="fas fa-arrow-down"></i>
+                    </button>
+                    <button class="btn btn-primary" onclick="exportResults()">
+                        <i class="fas fa-download"></i> Export Results
+                    </button>
+                    <button class="btn btn-secondary" onclick="closeModal()">
+                        <i class="fas fa-times"></i> Close
+                    </button>
+                </div>
             </div>
         </div>
+    </div>
+
+    <!-- Export Format Modal -->
+    <div class="modal hidden" id="exportModal">
+        <div class="modal-content" style="width: 500px; max-width: 90vw;">
+            <div class="modal-header">
+                <h2><i class="fas fa-download"></i> Export Results</h2>
+                <button class="close-btn" onclick="closeExportModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body" style="padding: 30px;">
+                <p style="margin-bottom: 20px;">Select the format for exporting your search results:</p>
+                <div class="export-options">
+                    <button class="export-option-btn" onclick="exportAsPDF()">
+                        <i class="fas fa-file-pdf"></i>
+                        <span>PDF Document</span>
+                        <small>Formatted document with clickable links</small>
+                    </button>
+                    <button class="export-option-btn" onclick="exportAsExcel()">
+                        <i class="fas fa-file-excel"></i>
+                        <span>Excel Spreadsheet</span>
+                        <small>Structured data with columns</small>
+                    </button>
+                    <button class="export-option-btn" onclick="exportAsText()">
+                        <i class="fas fa-file-alt"></i>
+                        <span>Text File</span>
+                        <small>Plain text with all results</small>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reopen Results Button -->
+    <div id="reopenResultsButton" class="reopen-button hidden">
+        <button class="btn btn-primary" onclick="reopenResults()">
+            <i class="fas fa-search"></i>
+            <span>View Last Search Results</span>
+            <small id="lastSearchInfo">Click to reopen</small>
+        </button>
     </div>
 
     <!-- Error Toast -->
@@ -142,6 +347,8 @@
         <button onclick="hideToast()" class="toast-close">×</button>
     </div>
 
+    <!-- jsPDF for PDF export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="./script.js"></script>
 </body>
 </html> 
