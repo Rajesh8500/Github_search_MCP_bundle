@@ -3,7 +3,44 @@
 ## Overview
 This document summarizes all the recent changes made to the GitHub Search MCP application to improve UI/UX, functionality, and user experience.
 
-## Major Changes Implemented
+## 🎉 Version 2.0.0 - AI-Powered Features (Latest)
+
+### 1. **AI Repository Analysis System**
+- ✅ One-click AI summary button on all repository cards
+- ✅ Comprehensive analysis modal with three tabs:
+  - **Overview Tab**: AI-generated summaries, key features, technical details
+  - **Structure Tab**: Interactive file tree with click-to-analyze files
+  - **Languages Tab**: Visual charts and language distribution
+- ✅ Auto-generated 100-word summaries for selected repositories
+- ✅ File-level AI analysis with purpose, components, and dependencies
+
+### 2. **Enhanced Repository Search**
+- ✅ Public/Organization search toggle
+- ✅ Global search mode for all GitHub repositories
+- ✅ Organization-specific search with dynamic input field
+- ✅ Support for queries like `org:microsoft react`
+
+### 3. **New API Endpoints**
+- ✅ `/api/ai/repository-summary` - Generate repository summaries
+- ✅ `/api/ai/repository-analysis` - Comprehensive repository analysis
+- ✅ `/api/ai/file-analysis` - Individual file analysis
+- ✅ `/api/repository/structure` - Get repository file tree
+- ✅ `/api/repository/languages` - Get language statistics
+
+### 4. **UI/UX Enhancements for AI**
+- ✅ Purple gradient theme for AI features
+- ✅ Loading states with spinners for all AI operations
+- ✅ Interactive file tree with hover effects
+- ✅ Enhanced repository cards with dual-action buttons
+- ✅ Smooth animations and transitions
+
+### 5. **Testing & Documentation**
+- ✅ Created `test-features.html` for testing all AI features
+- ✅ Updated README with comprehensive AI documentation
+- ✅ Enhanced requirements.txt with AI service information
+- ✅ Created CHANGELOG.md for version tracking
+
+## Version 1.0.0 - Previous Major Changes
 
 ### 1. **Export Functionality**
 - ✅ Added export feature with format selection modal

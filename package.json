@@ -1,7 +1,7 @@
 {
   "name": "github-search-mcp",
-  "version": "1.0.0",
-  "description": "MCP server for searching keywords across all branches in GitHub repositories",
+  "version": "2.0.0",
+  "description": "MCP server for searching keywords across all branches in GitHub repositories with AI-powered repository analysis and intelligent summaries",
   "main": "src/server.js",
   "type": "module",
   "scripts": {
@@ -9,6 +9,7 @@
     "dev": "nodemon src/server.js",
     "build": "echo 'No build step required'",
     "test": "echo 'No tests specified'",
+    "test:features": "echo 'Open test-features.html in browser to test AI features'",
     "setup": "powershell -ExecutionPolicy Bypass -File setup-bundle.ps1",
     "setup:quick": "powershell -ExecutionPolicy Bypass -File quick-start.ps1",
     "setup:unix": "chmod +x run.sh && ./run.sh"
@@ -17,7 +18,15 @@
     "mcp",
     "github",
     "search",
-    "model-context-protocol"
+    "model-context-protocol",
+    "ai",
+    "repository-analysis",
+    "code-analysis",
+    "ai-summarizer",
+    "github-api",
+    "organization-search",
+    "file-explorer",
+    "language-analysis"
   ],
   "author": "GitHub Search MCP",
   "license": "MIT",
@@ -31,6 +40,11 @@
   },
   "devDependencies": {
     "nodemon": "^3.0.1"
+  },
+  "optionalDependencies": {
+    "openai": "^4.0.0",
+    "@anthropic-ai/sdk": "^0.9.0",
+    "@google/generative-ai": "^0.1.0"
   },
   "engines": {
     "node": ">=18.0.0"

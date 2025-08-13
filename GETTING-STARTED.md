@@ -1,6 +1,15 @@
 # 🚀 Getting Started - GitHub Search MCP
 
-Welcome! This guide will get you up and running with GitHub Search MCP in just a few clicks.
+Welcome! This guide will get you up and running with GitHub Search MCP in just a few clicks. Version 2.0 now includes AI-powered repository analysis features!
+
+## 🆕 What's New in Version 2.0
+
+🤖 **AI-Powered Features:**
+- Repository summarization with one-click AI analysis
+- Public/Organization search toggle for targeted searches
+- Interactive file tree explorer with AI file analysis
+- Language distribution visualization
+- Auto-generated summaries for selected repositories
 
 ## 🎯 Quick Start (Recommended)
 
@@ -60,7 +69,7 @@ During setup, you'll be prompted for a GitHub Personal Access Token:
 
 Once started, the web interface will be available at: **http://localhost:3000**
 
-### Example Search:
+### Basic Code Search:
 - **Keyword**: `useState`
 - **Repository**: `facebook/react`
 - **Options**: ✅ Search in files, ✅ Search in filenames
@@ -71,6 +80,32 @@ Results will appear in a popup with:
 - Code context
 - Branch information
 - Direct GitHub links
+
+## 🤖 Using AI Features (New!)
+
+### 1. Repository Search with AI:
+1. Select **"Find Repository"** tab
+2. Choose search scope:
+   - **Public**: Search all GitHub repositories
+   - **Organization**: Search within a specific org (e.g., "microsoft")
+3. Enter keyword (e.g., "machine learning", "react", "api")
+4. Click on any repository card
+5. Click **"AI Summary"** button for instant analysis
+
+### 2. AI Repository Analysis:
+The AI modal shows three tabs:
+- **Overview**: AI-generated summary, key features, technical details
+- **Structure**: Interactive file tree (click files for AI analysis)
+- **Languages**: Visual charts showing language distribution
+
+### 3. Quick AI Summary:
+When you select a repository for code search:
+- An AI summary automatically appears below the selection
+- Shows a 100-word description of the repository
+- Helps understand the project before searching
+
+### 4. Test AI Features:
+Open `test-features.html` in your browser to test individual AI endpoints
 
 ## 🔧 Manual Commands (Alternative)
 

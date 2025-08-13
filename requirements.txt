@@ -19,6 +19,12 @@
 #
 # GITHUB_TOKEN=your_github_personal_access_token_here
 # PORT=3000
+# 
+# Optional AI Service Integration (for production):
+# OPENAI_API_KEY=your_openai_api_key_here
+# ANTHROPIC_API_KEY=your_anthropic_api_key_here
+# GEMINI_API_KEY=your_google_gemini_api_key_here
+# AI_SERVICE=openai  # Options: openai, anthropic, gemini, mock (default)
 #
 # To get a GitHub Personal Access Token:
 # 1. Go to https://github.com/settings/tokens
@@ -40,6 +46,12 @@
 # dotenv@^16.6.1                      # Environment variable management
 # express@^4.18.2                     # Web server framework
 # node-fetch@^3.3.2                   # Fetch API for Node.js
+#
+# Optional AI Integration Dependencies (for production):
+# -------------------------------------------------------
+# openai@^4.0.0                       # OpenAI API client (optional)
+# @anthropic-ai/sdk@^0.9.0            # Anthropic Claude API (optional)
+# @google/generative-ai@^0.1.0        # Google Gemini API (optional)
 #
 # Development Dependencies:
 # ------------------------
@@ -142,6 +154,34 @@
 # ENABLE_CORS=true                    # Enable/disable CORS
 
 # =============================================================================
+# AI FEATURES & CAPABILITIES
+# =============================================================================
+# The application includes AI-powered features with mock implementations:
+#
+# 1. Repository Search Modes:
+#    - Public: Search globally across all GitHub repositories
+#    - Organization: Search within specific organizations only
+#
+# 2. AI Repository Analysis:
+#    - One-click AI summaries for any repository
+#    - Interactive file tree explorer with AI file analysis
+#    - Language distribution visualization
+#    - Auto-generated 100-word summaries for selected repos
+#
+# 3. API Endpoints for AI Features:
+#    - /api/ai/repository-summary    # Generate repository summaries
+#    - /api/ai/repository-analysis   # Comprehensive repo analysis
+#    - /api/ai/file-analysis         # Individual file analysis
+#    - /api/repository/structure     # Get repository file tree
+#    - /api/repository/languages     # Get language statistics
+#
+# 4. Production AI Integration:
+#    To enable real AI features in production, add API keys to .env:
+#    - OpenAI: OPENAI_API_KEY=your_key
+#    - Anthropic: ANTHROPIC_API_KEY=your_key
+#    - Google Gemini: GEMINI_API_KEY=your_key
+#
+# =============================================================================
 # PROJECT STRUCTURE
 # =============================================================================
 # Github-search-MCP/
@@ -152,13 +192,14 @@
 # │   ├── server.js          # Main server & MCP implementation
 # │   └── github-searcher.js # GitHub API integration
 # ├── public/
-# │   ├── index.html         # Web interface
-# │   ├── script.js          # Frontend JavaScript
-# │   └── styles.css         # Styling
+# │   ├── index.html         # Web interface with AI features
+# │   ├── script.js          # Frontend JavaScript with AI logic
+# │   └── styles.css         # Styling including AI components
 # ├── config/
 # │   └── mcp-server.json    # MCP server configuration
-# └── scripts/
-#     └── setup.js           # Setup utilities
+# ├── scripts/
+# │   └── setup.js           # Setup utilities
+# └── test-features.html     # Test page for AI features
 
 # =============================================================================
 # SUPPORT & DOCUMENTATION
