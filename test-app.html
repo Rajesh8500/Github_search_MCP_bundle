@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test GitHub Search</title>
+</head>
+<body>
+    <h1>Test GitHub Search Application</h1>
+    <p>Testing the application endpoints...</p>
+    
+    <h2>1. Test Repository Search</h2>
+    <button onclick="testRepoSearch()">Search for "react" repositories</button>
+    <div id="repoResults"></div>
+    
+    <h2>2. Test Code Search</h2>
+    <button onclick="testCodeSearch()">Search "useState" in facebook/react</button>
+    <div id="codeResults"></div>
+    
+    <script>
+        async function testRepoSearch() {
+            try {
+                const response = await fetch('http://localhost:3000/api/search/repositories', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ keyword: 'react' })
+                });
+                const data = await response.json();
+                document.getElementById('repoResults').innerHTML = 
+                    `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+            } catch (error) {
+                document.getElementById('repoResults').innerHTML = 
+                    `<p style="color: red;">Error: ${error.message}</p>`;
+            }
+        }
+        
+        async function testCodeSearch() {
+            try {
+                const response = await fetch('http://localhost:3000/api/search', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        keyword: 'useState',
+                        repository: 'facebook/react',
+                        options: {
+                            searchInFiles: true,
+                            searchInFilenames: true,
+                            maxResults: 10,
+                            fileExtensions: []
+                        }
+                    })
+                });
+                const data = await response.json();
+                document.getElementById('codeResults').innerHTML = 
+                    `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+            } catch (error) {
+                document.getElementById('codeResults').innerHTML = 
+                    `<p style="color: red;">Error: ${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html> 

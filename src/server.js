@@ -542,7 +542,7 @@ class GitHubSearchMCP {
 
     app.post('/api/search/repositories', async (req, res) => {
         try {
-            const { keyword } = req.body;
+            const { keyword, scope, organization } = req.body;
             
             if (!keyword) {
                 return res.status(400).json({ 
@@ -551,17 +551,131 @@ class GitHubSearchMCP {
                 });
             }
 
-            const repositories = await this.githubSearcher.searchRepositories(keyword);
+            // Build search query based on scope
+            let searchQuery = keyword;
+            if (scope === 'private' && organization) {
+                // For organization-specific search, prepend org: to the query
+                searchQuery = `org:${organization} ${keyword}`;
+            }
+
+            const repositories = await this.githubSearcher.searchRepositories(searchQuery);
             
             res.json({ 
                 success: true, 
                 repositories,
-                keyword
+                keyword,
+                scope,
+                organization
             });
         } catch (error) {
             console.error('Repository search error:', error);
             res.status(500).json({ 
                 error: error.message || 'Repository search failed',
+                success: false
+            });
+        }
+    });
+
+    // AI Repository Summary endpoint
+    app.post('/api/ai/repository-summary', async (req, res) => {
+        try {
+            const { repository, description, language, topics } = req.body;
+            
+            // For now, generate a mock summary. In production, this would call an AI service
+            const summary = await this.generateAISummary(repository, description, language, topics);
+            
+            res.json({ 
+                success: true,
+                summary
+            });
+        } catch (error) {
+            console.error('AI summary error:', error);
+            res.status(500).json({ 
+                error: error.message || 'Failed to generate summary',
+                success: false
+            });
+        }
+    });
+
+    // AI Repository Analysis endpoint
+    app.post('/api/ai/repository-analysis', async (req, res) => {
+        try {
+            const { repository, description, language, topics, stars, forks } = req.body;
+            
+            // Mock AI analysis response
+            const analysis = await this.generateAIAnalysis(repository, description, language, topics, stars, forks);
+            
+            res.json({ 
+                success: true,
+                ...analysis
+            });
+        } catch (error) {
+            console.error('AI analysis error:', error);
+            res.status(500).json({ 
+                error: error.message || 'Failed to analyze repository',
+                success: false
+            });
+        }
+    });
+
+    // Repository structure endpoint
+    app.post('/api/repository/structure', async (req, res) => {
+        try {
+            const { repository } = req.body;
+            
+            // Get repository structure from GitHub API
+            const structure = await this.githubSearcher.getRepositoryStructure(repository);
+            
+            res.json({ 
+                success: true,
+                tree: structure
+            });
+        } catch (error) {
+            console.error('Repository structure error:', error);
+            res.status(500).json({ 
+                error: error.message || 'Failed to get repository structure',
+                success: false
+            });
+        }
+    });
+
+    // Repository languages endpoint
+    app.post('/api/repository/languages', async (req, res) => {
+        try {
+            const { repository } = req.body;
+            
+            // Get languages from GitHub API
+            const languages = await this.githubSearcher.getRepositoryLanguages(repository);
+            
+            res.json({ 
+                success: true,
+                languages
+            });
+        } catch (error) {
+            console.error('Repository languages error:', error);
+            res.status(500).json({ 
+                error: error.message || 'Failed to get repository languages',
+                success: false
+            });
+        }
+    });
+
+    // AI File Analysis endpoint
+    app.post('/api/ai/file-analysis', async (req, res) => {
+        try {
+            const { repository, filePath } = req.body;
+            
+            // Mock file analysis
+            const analysis = await this.generateFileAnalysis(repository, filePath);
+            
+            res.json({ 
+                success: true,
+                ...analysis
+            });
+        } catch (error) {
+            console.error('File analysis error:', error);
+            res.status(500).json({ 
+                error: error.message || 'Failed to analyze file',
                 success: false
             });
         }
@@ -621,6 +735,84 @@ class GitHubSearchMCP {
     app.listen(PORT, () => {
       console.log(`GitHub Search MCP Web Interface running on http://localhost:${PORT}`);
     });
+  }
+
+  // AI Helper Methods
+  async generateAISummary(repository, description, language, topics) {
+    // Mock AI summary generation
+    // In production, this would integrate with OpenAI, Anthropic, or another AI service
+    const topicsStr = topics && topics.length > 0 ? topics.join(', ') : 'general';
+    const langStr = language || 'multiple languages';
+    
+    return `This ${repository} repository is a ${langStr} project that ${description || 'provides various functionalities'}. It focuses on ${topicsStr} and offers a comprehensive solution for developers looking to implement similar features. The codebase is well-structured and follows modern development practices, making it easy to understand and contribute to.`;
+  }
+
+  async generateAIAnalysis(repository, description, language, topics, stars, forks) {
+    // Mock comprehensive AI analysis
+    return {
+      summary: `${repository} is a ${language || 'multi-language'} project with ${stars} stars and ${forks} forks. ${description || 'It provides a robust solution for various use cases.'}`,
+      features: [
+        'Well-documented codebase with clear README',
+        `Active community with ${forks} forks`,
+        `Popular project with ${stars} stars`,
+        `Primary language: ${language || 'Multiple'}`,
+        'Regular updates and maintenance'
+      ],
+      technicalDetails: {
+        'Primary Language': language || 'Multiple',
+        'Stars': stars?.toLocaleString() || '0',
+        'Forks': forks?.toLocaleString() || '0',
+        'Topics': topics?.join(', ') || 'None specified',
+        'License': 'Check repository for details',
+        'Last Updated': 'Recently active'
+      }
+    };
+  }
+
+  async generateFileAnalysis(repository, filePath) {
+    // Mock file analysis
+    const fileName = filePath.split('/').pop();
+    const extension = fileName.split('.').pop();
+    
+    return {
+      purpose: `This file (${fileName}) appears to be a ${this.getFileType(extension)} file that handles specific functionality within the ${repository} project.`,
+      components: [
+        'Main function/class definitions',
+        'Helper utilities and methods',
+        'Configuration or constants',
+        'Export statements for module usage'
+      ],
+      dependencies: `This file likely imports modules and interacts with other components in the project structure.`
+    };
+  }
+
+  getFileType(extension) {
+    const types = {
+      'js': 'JavaScript',
+      'ts': 'TypeScript',
+      'jsx': 'React component',
+      'tsx': 'TypeScript React component',
+      'py': 'Python',
+      'java': 'Java',
+      'cpp': 'C++',
+      'c': 'C',
+      'cs': 'C#',
+      'go': 'Go',
+      'rs': 'Rust',
+      'rb': 'Ruby',
+      'php': 'PHP',
+      'swift': 'Swift',
+      'kt': 'Kotlin',
+      'html': 'HTML',
+      'css': 'CSS stylesheet',
+      'json': 'JSON configuration',
+      'xml': 'XML',
+      'yaml': 'YAML configuration',
+      'yml': 'YAML configuration',
+      'md': 'Markdown documentation',
+      'txt': 'text'
+    };
+    return types[extension?.toLowerCase()] || 'source code';
   }
 
   async run() {

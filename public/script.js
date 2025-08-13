@@ -959,6 +959,29 @@ function setupEventListeners() {
         repoSearchForm.addEventListener('submit', handleRepoSearch);
     }
     
+    // Public/Private search toggle
+    const publicSearch = document.getElementById('publicSearch');
+    const privateSearch = document.getElementById('privateSearch');
+    const orgNameGroup = document.getElementById('orgNameGroup');
+    
+    if (publicSearch && privateSearch) {
+        publicSearch.addEventListener('change', function() {
+            if (this.checked && orgNameGroup) {
+                orgNameGroup.classList.add('hidden');
+                document.getElementById('orgName').removeAttribute('required');
+            }
+        });
+        
+        privateSearch.addEventListener('change', function() {
+            if (this.checked && orgNameGroup) {
+                orgNameGroup.classList.remove('hidden');
+                document.getElementById('orgName').setAttribute('required', 'required');
+                // Re-initialize typing animation for organization input
+                initTypingAnimation();
+            }
+        });
+    }
+    
     // Tab switching functionality
     const resultsTabBtn = document.getElementById('resultsTabBtn');
     const progressTabBtn = document.getElementById('progressTabBtn');
@@ -1191,9 +1214,16 @@ async function handleRepoSearch(e) {
     
     const formData = new FormData(e.target);
     const keyword = formData.get('repoKeyword')?.trim();
+    const searchScope = formData.get('searchScope');
+    const orgName = formData.get('orgName')?.trim();
     
     if (!keyword) {
         showError('Please enter a search keyword for repositories');
+        return;
+    }
+    
+    if (searchScope === 'private' && !orgName) {
+        showError('Please enter an organization name for organization search');
         return;
     }
     
@@ -1201,12 +1231,18 @@ async function handleRepoSearch(e) {
     showLoading(true);
     
     try {
+        const requestBody = {
+            keyword: keyword,
+            scope: searchScope,
+            organization: searchScope === 'private' ? orgName : null
+        };
+        
         const response = await fetch('/api/search/repositories', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ keyword })
+            body: JSON.stringify(requestBody)
         });
         
         if (!response.ok) {
@@ -1309,10 +1345,16 @@ function createRepositoryCard(repo) {
                     </div>
                 </div>
             </div>
-            <button class="repo-select-btn" onclick="event.stopPropagation(); selectRepository('${repoId}')">
-                <i class="fas fa-check"></i>
-                Select
-            </button>
+            <div class="repo-actions">
+                <button class="ai-summarizer-btn" onclick="event.stopPropagation(); openAISummarizer('${repoId}')" title="AI Summary">
+                    <i class="fas fa-robot"></i>
+                    AI Summary
+                </button>
+                <button class="repo-select-btn" onclick="event.stopPropagation(); selectRepository('${repoId}')">
+                    <i class="fas fa-check"></i>
+                    Select
+                </button>
+            </div>
         </div>
     `;
 }
@@ -1357,27 +1399,531 @@ function selectRepository(repoId) {
             selectedRepoGroup.style.display = 'block';
         }
         
-        // Switch to code search mode with animation
-        switchSearchMode('direct');
+        // Generate and display AI summary for selected repository
+        generateRepoSummary(selectedRepository);
         
-        // Focus on keyword input with enhanced animation
+        // Switch to code search section with enhanced animation
         setTimeout(() => {
-            const keywordInput = document.getElementById('keyword');
-            if (keywordInput) {
-                keywordInput.focus();
-                keywordInput.style.animation = 'focusPulse 0.5s ease-out';
+            switchSearchMode('direct');
+            
+            // Add success animation
+            const selectedDisplay = document.getElementById('selectedRepoDisplay');
+            if (selectedDisplay) {
+                selectedDisplay.classList.add('pulse-success');
+                setTimeout(() => {
+                    selectedDisplay.classList.remove('pulse-success');
+                }, 1000);
             }
-        }, 600);
-        
-        showSuccess(`Selected repository: ${selectedRepository.full_name}`);
-        
-        // Clean up the global reference
-        delete window[repoId];
+            
+            showSuccess(`Repository "${selectedRepository.full_name}" selected for code search`);
+        }, 300);
         
     } catch (error) {
         console.error('Error selecting repository:', error);
-        showError('Failed to select repository');
+        showError('Failed to select repository. Please try again.');
     }
+}
+
+// Generate AI summary for selected repository
+async function generateRepoSummary(repo) {
+    const summarySection = document.getElementById('repoSummarySection');
+    const summaryText = document.getElementById('repoSummaryText');
+    const summaryContent = document.getElementById('repoSummaryContent');
+    
+    if (!summarySection || !summaryText) return;
+    
+    summarySection.style.display = 'block';
+    summaryContent.querySelector('.summary-loading').classList.remove('hidden');
+    summaryText.textContent = '';
+    
+    try {
+        const response = await fetch('/api/ai/repository-summary', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                repository: repo.full_name,
+                description: repo.description,
+                language: repo.language,
+                topics: repo.topics || []
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to generate summary');
+        }
+        
+        const data = await response.json();
+        summaryContent.querySelector('.summary-loading').classList.add('hidden');
+        summaryText.textContent = data.summary;
+        
+    } catch (error) {
+        console.error('Error generating summary:', error);
+        summaryContent.querySelector('.summary-loading').classList.add('hidden');
+        summaryText.textContent = 'Unable to generate AI summary at this time.';
+    }
+}
+
+// Open AI Summarizer Modal
+async function openAISummarizer(repoId) {
+    const repo = window[repoId];
+    if (!repo) {
+        showError('Repository data not found');
+        return;
+    }
+    
+    const modal = document.getElementById('aiSummarizerModal');
+    const repoNameEl = document.getElementById('aiRepoName');
+    
+    if (!modal) return;
+    
+    // Update modal title
+    if (repoNameEl) {
+        repoNameEl.textContent = repo.full_name;
+    }
+    
+    // Show modal
+    modal.classList.remove('hidden');
+    
+    // Reset tabs
+    switchAITab('overview');
+    
+    // Load AI analysis data
+    loadAIOverview(repo);
+    loadRepositoryStructure(repo);
+    loadLanguagesAnalysis(repo);
+}
+
+// Close AI Modal
+function closeAIModal() {
+    const modal = document.getElementById('aiSummarizerModal');
+    if (modal) {
+        modal.classList.add('hidden');
+    }
+}
+
+// Toggle AI Modal Size
+function toggleAIModalSize() {
+    const modalContent = document.querySelector('.ai-summarizer-modal');
+    if (modalContent) {
+        modalContent.classList.toggle('maximized');
+    }
+}
+
+// Switch AI Modal Tabs
+function switchAITab(tabName) {
+    // Hide all tabs
+    document.querySelectorAll('#aiSummarizerModal .tab-content').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    
+    // Remove active class from all tab buttons
+    document.querySelectorAll('#aiSummarizerModal .tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // Show selected tab
+    const selectedTab = document.getElementById(tabName + 'Tab');
+    const selectedBtn = document.getElementById(tabName + 'TabBtn');
+    
+    if (selectedTab) {
+        selectedTab.classList.add('active');
+    }
+    if (selectedBtn) {
+        selectedBtn.classList.add('active');
+    }
+}
+
+// Load AI Overview
+async function loadAIOverview(repo) {
+    const loadingEl = document.getElementById('aiOverviewLoading');
+    const contentEl = document.getElementById('aiOverviewContent');
+    const summaryEl = document.getElementById('aiRepoSummary');
+    const featuresEl = document.getElementById('aiKeyFeatures');
+    const techDetailsEl = document.getElementById('aiTechnicalDetails');
+    
+    if (!loadingEl || !contentEl) return;
+    
+    loadingEl.classList.remove('hidden');
+    contentEl.classList.add('hidden');
+    
+    try {
+        const response = await fetch('/api/ai/repository-analysis', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                repository: repo.full_name,
+                description: repo.description,
+                language: repo.language,
+                topics: repo.topics || [],
+                stars: repo.stargazers_count,
+                forks: repo.forks_count
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to analyze repository');
+        }
+        
+        const data = await response.json();
+        
+        // Display summary
+        if (summaryEl) {
+            summaryEl.innerHTML = `<p>${data.summary || 'No summary available'}</p>`;
+        }
+        
+        // Display key features
+        if (featuresEl && data.features) {
+            featuresEl.innerHTML = data.features.map(feature => 
+                `<div class="feature-item">
+                    <i class="fas fa-check-circle"></i>
+                    <span>${escapeHtml(feature)}</span>
+                </div>`
+            ).join('');
+        }
+        
+        // Display technical details
+        if (techDetailsEl && data.technicalDetails) {
+            techDetailsEl.innerHTML = `
+                <div class="tech-detail-grid">
+                    ${Object.entries(data.technicalDetails).map(([key, value]) => 
+                        `<div class="tech-detail-item">
+                            <span class="detail-label">${escapeHtml(key)}:</span>
+                            <span class="detail-value">${escapeHtml(value)}</span>
+                        </div>`
+                    ).join('')}
+                </div>
+            `;
+        }
+        
+        loadingEl.classList.add('hidden');
+        contentEl.classList.remove('hidden');
+        
+    } catch (error) {
+        console.error('Error loading AI overview:', error);
+        loadingEl.classList.add('hidden');
+        if (summaryEl) {
+            summaryEl.innerHTML = '<p class="error-message">Failed to load AI analysis. Please try again later.</p>';
+        }
+        contentEl.classList.remove('hidden');
+    }
+}
+
+// Load Repository Structure
+async function loadRepositoryStructure(repo) {
+    const loadingEl = document.getElementById('aiStructureLoading');
+    const contentEl = document.getElementById('aiStructureContent');
+    const explorerEl = document.getElementById('fileExplorer');
+    
+    if (!loadingEl || !contentEl) return;
+    
+    loadingEl.classList.remove('hidden');
+    contentEl.classList.add('hidden');
+    
+    try {
+        const response = await fetch('/api/repository/structure', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                repository: repo.full_name
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to load repository structure');
+        }
+        
+        const data = await response.json();
+        
+        // Display file tree
+        if (explorerEl && data.tree) {
+            explorerEl.innerHTML = renderFileTree(data.tree, repo.full_name);
+        }
+        
+        loadingEl.classList.add('hidden');
+        contentEl.classList.remove('hidden');
+        
+    } catch (error) {
+        console.error('Error loading repository structure:', error);
+        loadingEl.classList.add('hidden');
+        if (explorerEl) {
+            explorerEl.innerHTML = '<p class="error-message">Failed to load repository structure.</p>';
+        }
+        contentEl.classList.remove('hidden');
+    }
+}
+
+// Render file tree recursively
+function renderFileTree(tree, repoName, path = '') {
+    if (!tree || tree.length === 0) return '';
+    
+    return `
+        <ul class="file-tree">
+            ${tree.map(item => {
+                const fullPath = path ? `${path}/${item.name}` : item.name;
+                const itemId = 'tree_' + Math.random().toString(36).substr(2, 9);
+                
+                if (item.type === 'dir' || item.type === 'tree') {
+                    return `
+                        <li class="tree-folder">
+                            <span class="tree-item" onclick="toggleFolder('${itemId}')">
+                                <i class="fas fa-folder"></i>
+                                ${escapeHtml(item.name)}
+                            </span>
+                            <div class="tree-children hidden" id="${itemId}">
+                                ${item.children ? renderFileTree(item.children, repoName, fullPath) : ''}
+                            </div>
+                        </li>
+                    `;
+                } else {
+                    return `
+                        <li class="tree-file">
+                            <span class="tree-item" onclick="analyzeFile('${escapeHtml(repoName)}', '${escapeHtml(fullPath)}')">
+                                <i class="${getFileIcon(item.name)}"></i>
+                                ${escapeHtml(item.name)}
+                            </span>
+                        </li>
+                    `;
+                }
+            }).join('')}
+        </ul>
+    `;
+}
+
+// Get appropriate icon for file type
+function getFileIcon(filename) {
+    const ext = filename.split('.').pop().toLowerCase();
+    const iconMap = {
+        'js': 'fab fa-js-square',
+        'ts': 'fab fa-js-square',
+        'jsx': 'fab fa-react',
+        'tsx': 'fab fa-react',
+        'py': 'fab fa-python',
+        'java': 'fab fa-java',
+        'html': 'fab fa-html5',
+        'css': 'fab fa-css3-alt',
+        'json': 'fas fa-file-code',
+        'md': 'fas fa-file-alt',
+        'txt': 'fas fa-file-alt',
+        'yml': 'fas fa-file-code',
+        'yaml': 'fas fa-file-code',
+        'xml': 'fas fa-file-code'
+    };
+    return iconMap[ext] || 'fas fa-file';
+}
+
+// Toggle folder visibility
+function toggleFolder(folderId) {
+    const folder = document.getElementById(folderId);
+    if (folder) {
+        folder.classList.toggle('hidden');
+        const icon = folder.previousElementSibling.querySelector('i');
+        if (icon) {
+            icon.classList.toggle('fa-folder');
+            icon.classList.toggle('fa-folder-open');
+        }
+    }
+}
+
+// Analyze file with AI
+async function analyzeFile(repoName, filePath) {
+    const panel = document.getElementById('fileSummaryPanel');
+    const fileNameEl = document.getElementById('selectedFileName');
+    const contentEl = document.getElementById('fileSummaryContent');
+    const loadingEl = panel?.querySelector('.file-summary-loading');
+    
+    if (!panel || !contentEl) return;
+    
+    panel.classList.remove('hidden');
+    fileNameEl.textContent = filePath;
+    loadingEl?.classList.remove('hidden');
+    contentEl.innerHTML = '';
+    
+    try {
+        const response = await fetch('/api/ai/file-analysis', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                repository: repoName,
+                filePath: filePath
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to analyze file');
+        }
+        
+        const data = await response.json();
+        
+        loadingEl?.classList.add('hidden');
+        contentEl.innerHTML = `
+            <div class="file-analysis">
+                <h5>Purpose</h5>
+                <p>${escapeHtml(data.purpose || 'Unable to determine file purpose')}</p>
+                
+                <h5>Key Components</h5>
+                <ul>
+                    ${(data.components || []).map(comp => 
+                        `<li>${escapeHtml(comp)}</li>`
+                    ).join('')}
+                </ul>
+                
+                <h5>Dependencies</h5>
+                <p>${escapeHtml(data.dependencies || 'No dependencies identified')}</p>
+            </div>
+        `;
+        
+    } catch (error) {
+        console.error('Error analyzing file:', error);
+        loadingEl?.classList.add('hidden');
+        contentEl.innerHTML = '<p class="error-message">Failed to analyze file.</p>';
+    }
+}
+
+// Load Languages Analysis
+async function loadLanguagesAnalysis(repo) {
+    const loadingEl = document.getElementById('aiLanguagesLoading');
+    const contentEl = document.getElementById('aiLanguagesContent');
+    const chartEl = document.getElementById('languageChart');
+    const listEl = document.getElementById('languagesList');
+    
+    if (!loadingEl || !contentEl) return;
+    
+    loadingEl.classList.remove('hidden');
+    contentEl.classList.add('hidden');
+    
+    try {
+        const response = await fetch('/api/repository/languages', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                repository: repo.full_name
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to load languages');
+        }
+        
+        const data = await response.json();
+        
+        // Display language chart
+        if (chartEl && data.languages) {
+            const total = Object.values(data.languages).reduce((a, b) => a + b, 0);
+            const sortedLangs = Object.entries(data.languages)
+                .sort((a, b) => b[1] - a[1]);
+            
+            chartEl.innerHTML = `
+                <div class="language-bars">
+                    ${sortedLangs.map(([lang, bytes]) => {
+                        const percentage = ((bytes / total) * 100).toFixed(1);
+                        return `
+                            <div class="language-bar-container">
+                                <div class="language-info">
+                                    <span class="language-name">${escapeHtml(lang)}</span>
+                                    <span class="language-percentage">${percentage}%</span>
+                                </div>
+                                <div class="language-bar-bg">
+                                    <div class="language-bar" style="width: ${percentage}%; background-color: ${getLanguageColor(lang)}"></div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+        }
+        
+        // Display languages list with details
+        if (listEl && data.languages) {
+            const sortedLangs = Object.entries(data.languages)
+                .sort((a, b) => b[1] - a[1]);
+            
+            listEl.innerHTML = `
+                <div class="languages-grid">
+                    ${sortedLangs.map(([lang, bytes]) => `
+                        <div class="language-card">
+                            <div class="language-icon" style="background-color: ${getLanguageColor(lang)}">
+                                <i class="${getLanguageIcon(lang)}"></i>
+                            </div>
+                            <div class="language-details">
+                                <h4>${escapeHtml(lang)}</h4>
+                                <p>${formatBytes(bytes)}</p>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+        
+        loadingEl.classList.add('hidden');
+        contentEl.classList.remove('hidden');
+        
+    } catch (error) {
+        console.error('Error loading languages:', error);
+        loadingEl.classList.add('hidden');
+        if (chartEl) {
+            chartEl.innerHTML = '<p class="error-message">Failed to load language analysis.</p>';
+        }
+        contentEl.classList.remove('hidden');
+    }
+}
+
+// Get language color
+function getLanguageColor(language) {
+    const colors = {
+        'JavaScript': '#f1e05a',
+        'TypeScript': '#2b7489',
+        'Python': '#3572A5',
+        'Java': '#b07219',
+        'HTML': '#e34c26',
+        'CSS': '#563d7c',
+        'C++': '#f34b7d',
+        'C': '#555555',
+        'C#': '#178600',
+        'Go': '#00ADD8',
+        'Rust': '#dea584',
+        'Ruby': '#701516',
+        'PHP': '#4F5D95',
+        'Swift': '#ffac45',
+        'Kotlin': '#F18E33'
+    };
+    return colors[language] || '#' + Math.floor(Math.random()*16777215).toString(16);
+}
+
+// Get language icon
+function getLanguageIcon(language) {
+    const icons = {
+        'JavaScript': 'fab fa-js-square',
+        'TypeScript': 'fab fa-js-square',
+        'Python': 'fab fa-python',
+        'Java': 'fab fa-java',
+        'HTML': 'fab fa-html5',
+        'CSS': 'fab fa-css3-alt',
+        'PHP': 'fab fa-php',
+        'Ruby': 'fas fa-gem',
+        'Go': 'fas fa-code',
+        'Rust': 'fas fa-cog',
+        'Swift': 'fab fa-swift'
+    };
+    return icons[language] || 'fas fa-code';
+}
+
+// Format bytes to human readable
+function formatBytes(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
 }
 
 // Validate repository format

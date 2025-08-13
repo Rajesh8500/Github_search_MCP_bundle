@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GitHub Search - New Features Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 2px solid #6366f1;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #6366f1;
+            margin-top: 0;
+        }
+        .test-button {
+            background: #6366f1;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        .test-button:hover {
+            background: #5558d1;
+        }
+        .result {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 15px;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .success {
+            color: green;
+        }
+        .error {
+            color: red;
+        }
+        input {
+            padding: 8px;
+            margin: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 200px;
+        }
+        label {
+            display: inline-block;
+            width: 120px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🚀 GitHub Search - New AI Features Test</h1>
+    
+    <div class="test-section">
+        <h2>1. Public/Private Repository Search</h2>
+        <div>
+            <label>Search Scope:</label>
+            <select id="searchScope">
+                <option value="public">Public (Global)</option>
+                <option value="private">Organization</option>
+            </select>
+        </div>
+        <div id="orgInput" style="display: none;">
+            <label>Organization:</label>
+            <input type="text" id="orgName" placeholder="e.g., microsoft, facebook">
+        </div>
+        <div>
+            <label>Keyword:</label>
+            <input type="text" id="keyword" placeholder="e.g., react, vscode">
+        </div>
+        <button class="test-button" onclick="testRepoSearch()">Test Repository Search</button>
+        <div id="searchResult" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>2. AI Repository Summary</h2>
+        <div>
+            <label>Repository:</label>
+            <input type="text" id="repoName" placeholder="owner/repo" value="facebook/react">
+        </div>
+        <button class="test-button" onclick="testAISummary()">Generate AI Summary</button>
+        <div id="summaryResult" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>3. Repository Analysis</h2>
+        <button class="test-button" onclick="testRepoAnalysis()">Get Full Analysis</button>
+        <div id="analysisResult" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>4. Repository Structure</h2>
+        <button class="test-button" onclick="testRepoStructure()">Get File Structure</button>
+        <div id="structureResult" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>5. Repository Languages</h2>
+        <button class="test-button" onclick="testRepoLanguages()">Get Languages</button>
+        <div id="languagesResult" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>6. File Analysis</h2>
+        <div>
+            <label>File Path:</label>
+            <input type="text" id="filePath" placeholder="src/index.js" value="src/index.js">
+        </div>
+        <button class="test-button" onclick="testFileAnalysis()">Analyze File</button>
+        <div id="fileResult" class="result"></div>
+    </div>
+
+    <script>
+        // Update organization input visibility
+        document.getElementById('searchScope').addEventListener('change', function() {
+            document.getElementById('orgInput').style.display = 
+                this.value === 'private' ? 'block' : 'none';
+        });
+
+        async function testRepoSearch() {
+            const scope = document.getElementById('searchScope').value;
+            const keyword = document.getElementById('keyword').value;
+            const orgName = document.getElementById('orgName').value;
+            const resultDiv = document.getElementById('searchResult');
+            
+            resultDiv.innerHTML = 'Searching...';
+            
+            try {
+                const response = await fetch('http://localhost:3000/api/search/repositories', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        keyword, 
+                        scope,
+                        organization: scope === 'private' ? orgName : null
+                    })
+                });
+                
+                const data = await response.json();
+                resultDiv.innerHTML = `<span class="success">✓ Found ${data.repositories?.length || 0} repositories</span>\n\n` +
+                    JSON.stringify(data.repositories?.slice(0, 3), null, 2);
+            } catch (error) {
+                resultDiv.innerHTML = `<span class="error">✗ Error: ${error.message}</span>`;
+            }
+        }
+
+        async function testAISummary() {
+            const repoName = document.getElementById('repoName').value;
+            const resultDiv = document.getElementById('summaryResult');
+            
+            resultDiv.innerHTML = 'Generating AI summary...';
+            
+            try {
+                const response = await fetch('http://localhost:3000/api/ai/repository-summary', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        repository: repoName,
+                        description: 'A JavaScript library for building user interfaces',
+                        language: 'JavaScript',
+                        topics: ['react', 'javascript', 'ui']
+                    })
+                });
+                
+                const data = await response.json();
+                resultDiv.innerHTML = `<span class="success">✓ AI Summary Generated</span>\n\n${data.summary}`;
+            } catch (error) {
+                resultDiv.innerHTML = `<span class="error">✗ Error: ${error.message}</span>`;
+            }
+        }
+
+        async function testRepoAnalysis() {
+            const repoName = document.getElementById('repoName').value;
+            const resultDiv = document.getElementById('analysisResult');
+            
+            resultDiv.innerHTML = 'Analyzing repository...';
+            
+            try {
+                const response = await fetch('http://localhost:3000/api/ai/repository-analysis', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        repository: repoName,
+                        description: 'A JavaScript library for building user interfaces',
+                        language: 'JavaScript',
+                        topics: ['react', 'javascript', 'ui'],
+                        stars: 200000,
+                        forks: 40000
+                    })
+                });
+                
+                const data = await response.json();
+                resultDiv.innerHTML = `<span class="success">✓ Analysis Complete</span>\n\n` +
+                    JSON.stringify(data, null, 2);
+            } catch (error) {
+                resultDiv.innerHTML = `<span class="error">✗ Error: ${error.message}</span>`;
+            }
+        }
+
+        async function testRepoStructure() {
+            const repoName = document.getElementById('repoName').value;
+            const resultDiv = document.getElementById('structureResult');
+            
+            resultDiv.innerHTML = 'Loading file structure...';
+            
+            try {
+                const response = await fetch('http://localhost:3000/api/repository/structure', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ repository: repoName })
+                });
+                
+                const data = await response.json();
+                resultDiv.innerHTML = `<span class="success">✓ Structure Loaded</span>\n\n` +
+                    JSON.stringify(data.tree, null, 2);
+            } catch (error) {
+                resultDiv.innerHTML = `<span class="error">✗ Error: ${error.message}</span>`;
+            }
+        }
+
+        async function testRepoLanguages() {
+            const repoName = document.getElementById('repoName').value;
+            const resultDiv = document.getElementById('languagesResult');
+            
+            resultDiv.innerHTML = 'Analyzing languages...';
+            
+            try {
+                const response = await fetch('http://localhost:3000/api/repository/languages', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ repository: repoName })
+                });
+                
+                const data = await response.json();
+                resultDiv.innerHTML = `<span class="success">✓ Languages Analyzed</span>\n\n` +
+                    JSON.stringify(data.languages, null, 2);
+            } catch (error) {
+                resultDiv.innerHTML = `<span class="error">✗ Error: ${error.message}</span>`;
+            }
+        }
+
+        async function testFileAnalysis() {
+            const repoName = document.getElementById('repoName').value;
+            const filePath = document.getElementById('filePath').value;
+            const resultDiv = document.getElementById('fileResult');
+            
+            resultDiv.innerHTML = 'Analyzing file...';
+            
+            try {
+                const response = await fetch('http://localhost:3000/api/ai/file-analysis', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        repository: repoName,
+                        filePath: filePath
+                    })
+                });
+                
+                const data = await response.json();
+                resultDiv.innerHTML = `<span class="success">✓ File Analysis Complete</span>\n\n` +
+                    JSON.stringify(data, null, 2);
+            } catch (error) {
+                resultDiv.innerHTML = `<span class="error">✗ Error: ${error.message}</span>`;
+            }
+        }
+    </script>
+</body>
+</html> 

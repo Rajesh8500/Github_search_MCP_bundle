@@ -476,7 +476,7 @@ export class GitHubSearcher {
   }
 
   /**
-   * Search for repositories on GitHub
+   * Search repositories by keyword
    */
   async searchRepositories(keyword, options = {}) {
     const { maxResults = 20, sort = 'stars' } = options;
@@ -494,6 +494,71 @@ export class GitHubSearcher {
     } catch (error) {
       console.warn(`Error searching repositories: ${error.message}`);
       return [];
+    }
+  }
+
+  /**
+   * Get repository file structure
+   */
+  async getRepositoryStructure(repository) {
+    try {
+      const url = `${this.apiBase}/repos/${repository}/contents`;
+      const contents = await this.makeRequest(url);
+      
+      // Recursively build tree structure (limiting depth to avoid rate limits)
+      const tree = await this.buildFileTree(repository, '', contents, 0, 2);
+      return tree;
+    } catch (error) {
+      console.warn(`Error getting repository structure: ${error.message}`);
+      return [];
+    }
+  }
+
+  /**
+   * Build file tree recursively
+   */
+  async buildFileTree(repository, path, items, currentDepth, maxDepth) {
+    if (!items || currentDepth >= maxDepth) {
+      return items || [];
+    }
+
+    const tree = [];
+    for (const item of items) {
+      const treeItem = {
+        name: item.name,
+        type: item.type,
+        path: item.path
+      };
+
+      // If it's a directory and we haven't reached max depth, get its contents
+      if (item.type === 'dir' && currentDepth < maxDepth) {
+        try {
+          const url = `${this.apiBase}/repos/${repository}/contents/${item.path}`;
+          const children = await this.makeRequest(url);
+          treeItem.children = await this.buildFileTree(repository, item.path, children, currentDepth + 1, maxDepth);
+        } catch (error) {
+          console.warn(`Error getting contents of ${item.path}: ${error.message}`);
+          treeItem.children = [];
+        }
+      }
+
+      tree.push(treeItem);
+    }
+
+    return tree;
+  }
+
+  /**
+   * Get repository languages
+   */
+  async getRepositoryLanguages(repository) {
+    try {
+      const url = `${this.apiBase}/repos/${repository}/languages`;
+      const languages = await this.makeRequest(url);
+      return languages || {};
+    } catch (error) {
+      console.warn(`Error getting repository languages: ${error.message}`);
+      return {};
     }
   }
 
